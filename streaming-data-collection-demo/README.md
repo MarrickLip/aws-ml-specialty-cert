@@ -13,3 +13,10 @@ You work for a company who has thousands of users interacting with the company's
 ### Solution
 
 - (To challenge myself, I created all of this using CDK, not Serverless Framework which I'm more familiar with )
+
+### Notes:
+
+- (RETURN SHAPE)
+- (GZIP COMPRESSION)
+- (CALLED RECORDS)
+- BATCHES & Delimited with \\n

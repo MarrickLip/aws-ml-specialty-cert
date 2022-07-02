@@ -9,10 +9,30 @@ import * as logs from "aws-cdk-lib/aws-logs";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as cdk from "aws-cdk-lib";
 import * as destinations from "@aws-cdk/aws-kinesisfirehose-destinations-alpha";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as iam from "aws-cdk-lib/aws-iam";
 
 export class StreamingDataCollectionDemoStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
+
+    const producerRole = new iam.Role(this, "ProduceFunctionRole", {
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+    });
+
+    const producerFunction = new lambdanodejs.NodejsFunction(
+      this,
+      "ProducerFunction",
+      {
+        entry: path.join(__dirname, "lambda-producer.js"),
+        timeout: cdk.Duration.minutes(15),
+        bundling: {
+          nodeModules: ["axios", "@aws-sdk/client-firehose"],
+        },
+        runtime: lambda.Runtime.NODEJS_16_X,
+        role: producerRole,
+      }
+    );
 
     const bucket = new s3.Bucket(this, "Bucket", {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -54,13 +74,12 @@ export class StreamingDataCollectionDemoStack extends Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    new firehose.DeliveryStream(this, "Delivery Stream", {
+    const stream = new firehose.DeliveryStream(this, "Delivery Stream", {
       destinations: [
         new destinations.S3Bucket(bucket, {
           logging: true,
           logGroup: logGroup,
           processor: processor,
-          compression: destinations.Compression.GZIP,
           dataOutputPrefix: "regularPrefix",
           errorOutputPrefix: "errorPrefix",
           bufferingInterval: cdk.Duration.seconds(60),
@@ -69,7 +88,6 @@ export class StreamingDataCollectionDemoStack extends Stack {
           s3Backup: {
             mode: destinations.BackupMode.ALL,
             bucket: backupBucket,
-            compression: destinations.Compression.ZIP,
             dataOutputPrefix: "backupPrefix",
             errorOutputPrefix: "backupErrorPrefix",
             bufferingInterval: cdk.Duration.seconds(60),
@@ -79,5 +97,12 @@ export class StreamingDataCollectionDemoStack extends Stack {
         }),
       ],
     });
+
+    producerFunction.addEnvironment(
+      "DELIVERY_STREAM_NAME",
+      stream.deliveryStreamName
+    );
+
+    stream.grantPutRecords(producerRole);
   }
 }
