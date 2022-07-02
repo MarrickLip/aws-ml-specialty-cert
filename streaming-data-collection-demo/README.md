@@ -9,3 +9,7 @@ You work for a company who has thousands of users interacting with the company's
 - User the randomuser.me API to generate random user data
 - Filter out users that aren't 21 years old and strip out unwanted data (not first name, last name, age, gender, latitude, longitude)
 - Save the results as JSON files in S3
+
+### Solution
+
+- (To challenge myself, I created all of this using CDK, not Serverless Framework which I'm more familiar with )
